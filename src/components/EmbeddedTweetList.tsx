@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { createTweet } from "../lib/twitter";
 
 type Props = {
@@ -6,30 +6,33 @@ type Props = {
 };
 
 export const EmbeddedTweetList: React.VFC<Props> = ({ tweetIds }) => {
-  const [unloadTweetIds, setUnloadTweetIds] = useState(tweetIds);
-  const ref = useRef<HTMLDivElement>(null);
+  const [count, setCount] = useState(0);
+  const loading = count < tweetIds.length;
 
-  useEffect(() => {
-    const parent = ref.current;
-    if (parent !== null) {
-      tweetIds.forEach((tweetId) => {
-        const div = document.createElement("div");
-        createTweet(div, tweetId).then(() => {
-          setUnloadTweetIds((prev) => prev.filter((x) => x !== tweetId));
-        });
-        parent.appendChild(div);
-      });
-    }
-  }, [tweetIds]);
+  const ref = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (node) {
+        // reset
+        while (node.firstChild) {
+          node.removeChild(node.firstChild);
+        }
+        setCount(0);
+        // create
+        tweetIds.forEach((tweetId) =>
+          createTweet(node, tweetId).then(() => setCount((c) => c + 1))
+        );
+      }
+    },
+    [tweetIds]
+  );
 
   return (
     <div>
-      <p>[debug] unloadTweetIds: {JSON.stringify(unloadTweetIds)}</p>
-      {unloadTweetIds.length > 0 && <p>loading....</p>}
-      <div
-        ref={ref}
-        style={{ display: unloadTweetIds.length > 0 ? "hidden" : "inherit" }}
-      />
+      <p>count: {count}</p>
+      {/* {loading && <p>loading...</p>} */}
+      <div style={{ height: loading ? "0px" : "inherit" }}>
+        <div ref={ref} />
+      </div>
     </div>
   );
 };
